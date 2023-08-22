@@ -12,6 +12,7 @@ import glob
 import time
 import numpy as np
 import shutil
+import json
 
 def parser():
     parser = argparse.ArgumentParser(description="YOLO Object Detection")
@@ -112,31 +113,61 @@ def main():
     os.makedirs(temp_image_folder, exist_ok=True)
     extract_frames_from_video(args.input, temp_image_folder, target_resolution, frame_interval=60)
 
+    cap = cv2.VideoCapture(args.input)
+    total_frames_in_video = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    cap.release()
+    
+    #total_frames_processed = 0
+    total_frames_extracted = 0
+    total_frames_with_license_plate = 0
+  
+    
     for frame_name in sorted(os.listdir(temp_image_folder)):
         frame_path = os.path.join(temp_image_folder, frame_name)
         prev_time = time.time()
         frame = cv2.imread(frame_path)
-        plate_regions = detect_license_plates(
+        #total_frames_processed += 1
+        plate_regions, plate_info_list = detect_license_plates(
             frame, network, class_names, class_colors, args.thresh
         )
         
-       
-        print("Processing frame:", frame_name)
 
-        for idx, plate_region in enumerate(plate_regions):
-          
+        original_width, original_height = frame.shape[1], frame.shape[0]  # Get original image dimensions
+        print("Processing frame:", frame_name)
+        
+        frame_data = []
+        
+        for idx, (plate_region, plate_info) in enumerate(zip(plate_regions, plate_info_list)):
+            center_x = plate_info["center_x"]
+            center_y = plate_info["center_y"]
+            width = plate_info["width"]
+            height = plate_info["height"]
+            
             # Recognize text on license plates
             result = recognize_license_plate(plate_region)
             detected_text = ""
+            
             for result_boxes in result:
                 for box, (text, confidence) in result_boxes:
                     detected_text += text + " "
-                    print("Detected license plate in frame", frame_name, ":", detected_text)
-                
+                    
+                    detection_data = {
+                        "frame_name": frame_name,
+                        "detected_text": detected_text,
+                        "center_x": center_x,
+                        "center_y": center_y,
+                        "width": width,
+                        "height": height
+                    }
+                    frame_data.append(detection_data)
+                    print("Detected license plate in", frame_name, ":", detected_text,'|',"BBox coordinates:", "center_x:", center_x, "center_y:", center_y, "width:", width,"height:", height)
+                   
+                    total_frames_with_license_plate += 1
+           
             # Save the plate region image
             plate_image_path = os.path.splitext(frame_path)[0] + f"_lp_{idx}.jpg"
             cv2.imwrite(plate_image_path, plate_region)
-                
+            
             # If 'result' is an image, save it too
             if isinstance(result, np.ndarray):
                 result_image_path = os.path.splitext(frame_path)[0] + f"_result_{idx}.jpg"
@@ -147,8 +178,23 @@ def main():
             if isinstance(result, np.ndarray):
                 os.rename(result_image_path, os.path.join(result_folder, os.path.basename(result_image_path)))
 
+        total_frames_extracted += 1
+
+
+        # Save frame data as a JSON file
+        frame_json_path = os.path.join(result_folder, os.path.splitext(frame_name)[0] + "_data.json")
+        with open(frame_json_path, 'w',encoding='utf-8') as json_file:
+            json.dump(frame_data, json_file, indent=4, ensure_ascii =False)
+    
+    #print("Total frames processed:", total_frames_processed)
+    print("Total frames in original video:", total_frames_in_video)    
+    print("Total frames extracted:", total_frames_extracted)
+    print("Total frames with license plate:", total_frames_with_license_plate)
+
+
     # Move the temp_frames folder to the result folder
     shutil.move(temp_image_folder, os.path.join(result_folder, "temp_frames"))
+
 
             
             

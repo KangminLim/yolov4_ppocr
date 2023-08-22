@@ -29,35 +29,43 @@ def image_detection(image_or_path, network, class_names, class_colors, thresh):
     image = darknet.draw_boxes(detections, image_resized, class_colors)
     return cv2.cvtColor(image, cv2.COLOR_BGR2RGB), detections
 
+
 def detect_license_plates(image_name, network, class_names, class_colors, thresh):
     image, detections = image_detection(image_name, network, class_names, class_colors, thresh)
     plate_regions = []
-
+    plate_info_list = []  # List to store information about detected plates
+    
     original_width, original_height = image_name.shape[1], image_name.shape[0]  # Get original image dimensions
-    #print("",original_width, original_height)
 
     for label, confidence, bbox in detections:
         if label == "license_plate":
-            left_x, top_y, width, height = map(int, bbox)
-            #print("",left_x,top_y,width,height)
+            center_x, center_y, width, height = map(int, bbox)
             
             width_scale = original_width / image.shape[1]
             height_scale = original_height / image.shape[0]
             
             # Convert bbox ratios to original image coordinates
-            left_x = int(left_x * width_scale)
-            top_y = int(top_y *  height_scale)
+            center_x = int(center_x * width_scale)
+            center_y = int(center_y * height_scale)
             width = int(width * width_scale)
-            height = int(height *  height_scale)
-            #print("",left_x,top_y,width,height)
+            height = int(height * height_scale)
             
-            nlx = max(0, left_x - width//2)
-            nrx = min(original_width, left_x + width//2)
-            nly = max(0, top_y - height//2)
-            nhy = min(original_height, top_y + height//2)
-            #print("",nlx,nrx,nly,nhy)
+            nlx = max(0, center_x - width // 2)
+            nrx = min(original_width, center_x + width // 2)
+            nly = max(0, center_y - height // 2)
+            nhy = min(original_height, center_y + height // 2)
             
             plate_region = image_name[nly:nhy, nlx:nrx]
             plate_regions.append(plate_region)
+            
+            # Store plate info for this detection
+            plate_info = {
+                "bbox": (nlx, nrx, nly, nhy),
+                "center_x": center_x,
+                "center_y": center_y,
+                "width": width,
+                "height": height
+            }
+            plate_info_list.append(plate_info)
 
-    return plate_regions
+    return plate_regions, plate_info_list
