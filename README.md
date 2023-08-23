@@ -30,11 +30,15 @@ python app.py --input video.mp4 --dont_show
 ## 결과물
 
 - **출력 예시**
+
+
 ![6](https://github.com/t3q-intern2023-2/task13_yolov4_ppocr/assets/87487729/9c44e8aa-887a-413b-8c99-90c0b63aba21)
 
 
 
 - **프레임 별 이미지 (60프레임 기준)**
+
+  
 ![7](https://github.com/t3q-intern2023-2/task13_yolov4_ppocr/assets/87487729/202dbb1e-95dc-49e6-a074-c8653a087610)
 
 
@@ -46,6 +50,8 @@ python app.py --input video.mp4 --dont_show
 
 
 - **frame별  BBox coordinates값 및 Detected_text값이 저장된 json 파일**
+
+
 ```json
 [
     {
