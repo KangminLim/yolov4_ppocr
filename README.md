@@ -7,8 +7,9 @@ About ppocr https://github.com/PaddlePaddle/PaddleOCR
 ## Algorithm
 Input Video -> Detect License plate -> Recognize License plate  
 
-## Download pretrained weight
+## Download pretrained weight / cfg
 .weight https://github.com/Dodant/anpr-with-yolo-v4
+.cfg https://github.com/Dodant/anpr-with-yolo-v4/blob/master/cfg/yolov4-ANPR.cfg
 
 ## Requirements
 yolov4_darknet, ppocr, opencv
