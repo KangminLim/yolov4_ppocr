@@ -16,7 +16,7 @@ import json
 
 def parser():
     parser = argparse.ArgumentParser(description="YOLO Object Detection")
-    parser.add_argument("--input", type=str, default="",
+    parser.add_argument("--input", type=str, default="./test04.mp4",
                         help="image source. It can be a single image, a"
                         "txt with paths to them, or a folder. Image valid"
                         " formats are jpg, jpeg or png."
@@ -107,20 +107,30 @@ def main():
     result_folder = os.path.join("results", "test", video_name)
     os.makedirs(result_folder, exist_ok=True)
     
-    # Extract frames from the video
-    target_resolution = (1920, 1080)
-    temp_image_folder = os.path.join(result_folder, "temp_frames")
-    os.makedirs(temp_image_folder, exist_ok=True)
-    extract_frames_from_video(args.input, temp_image_folder, target_resolution, frame_interval=60)
-
+    temp_json_folder = os.path.join(result_folder, "temp_json")
+    temp_lp_jpg_folder = os.path.join(result_folder, "temp_lp_jpg")
+    os.makedirs(temp_json_folder, exist_ok=True)
+    os.makedirs(temp_lp_jpg_folder, exist_ok=True)
+    
     cap = cv2.VideoCapture(args.input)
+    original_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))  # Get original video width
+    original_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))  # Get original video height
+    target_resolution = (original_width, original_height) 
     total_frames_in_video = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     cap.release()
+    
+    # Extract frames from the video
+    # target_resolution = (1920, 1080)
+    temp_image_folder = os.path.join(result_folder, "temp_frames")
+    os.makedirs(temp_image_folder, exist_ok=True)
+    extract_frames_from_video(args.input, temp_image_folder, target_resolution, frame_interval=5)
+
+    
     
     #total_frames_processed = 0
     total_frames_extracted = 0
     total_frames_with_license_plate = 0
-  
+    all_frames_data = []
     
     for frame_name in sorted(os.listdir(temp_image_folder)):
         frame_path = os.path.join(temp_image_folder, frame_name)
@@ -131,8 +141,13 @@ def main():
             frame, network, class_names, class_colors, args.thresh
         )
         
+        for plate_info in plate_info_list:
+            nlx, nrx, nly, nhy = plate_info["bbox"]
+            cv2.rectangle(frame, (nlx, nly), (nrx, nhy), (0, 255, 0), 2) 
 
-        original_width, original_height = frame.shape[1], frame.shape[0]  # Get original image dimensions
+        cv2.imwrite(frame_path, frame)
+        
+        #original_width, original_height = frame.shape[1], frame.shape[0]  # Get original image dimensions
         print("Processing frame:", frame_name)
         
         frame_data = []
@@ -147,7 +162,12 @@ def main():
             result = recognize_license_plate(plate_region)
             detected_text = ""
             
+
             for result_boxes in result:
+                if result_boxes is None:
+                    #print(f"Warning: No results obtained for frame {frame_name}. Skipping...")
+                    continue
+            
                 for box, (text, confidence) in result_boxes:
                     detected_text += text + " "
                     
@@ -165,26 +185,24 @@ def main():
                     total_frames_with_license_plate += 1
            
             # Save the plate region image
-            plate_image_path = os.path.splitext(frame_path)[0] + f"_lp_{idx}.jpg"
+            plate_image_path = os.path.join(temp_lp_jpg_folder, os.path.splitext(frame_name)[0] + f"_lp_{idx}.jpg")
             cv2.imwrite(plate_image_path, plate_region)
             
-            # If 'result' is an image, save it too
             if isinstance(result, np.ndarray):
-                result_image_path = os.path.splitext(frame_path)[0] + f"_result_{idx}.jpg"
+                result_image_path = os.path.splitext(plate_image_path)[0] + f"_result_{idx}.jpg"
                 cv2.imwrite(result_image_path, result)
 
-            # Move processed frames and results to the result folder
-            os.rename(plate_image_path, os.path.join(result_folder, os.path.basename(plate_image_path)))
-            if isinstance(result, np.ndarray):
-                os.rename(result_image_path, os.path.join(result_folder, os.path.basename(result_image_path)))
-
         total_frames_extracted += 1
-
+        all_frames_data.extend(frame_data)
 
         # Save frame data as a JSON file
-        frame_json_path = os.path.join(result_folder, os.path.splitext(frame_name)[0] + "_data.json")
+        frame_json_path = os.path.join(temp_json_folder, os.path.splitext(frame_name)[0] + "_data.json")
         with open(frame_json_path, 'w',encoding='utf-8') as json_file:
             json.dump(frame_data, json_file, indent=4, ensure_ascii =False)
+    
+    all_frames_data_path = os.path.join(temp_json_folder, "all_frames_data.json")
+    with open(all_frames_data_path, 'w', encoding='utf-8') as f:
+        json.dump(all_frames_data, f, indent=4, ensure_ascii=False)
     
     #print("Total frames processed:", total_frames_processed)
     print("Total frames in original video:", total_frames_in_video)    
