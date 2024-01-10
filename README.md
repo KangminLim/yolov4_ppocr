@@ -1,9 +1,9 @@
-# yolov4_ppocr
-yolov4_darknet + pp_ocr
+# yolov4_PaddleOCR
+yolov4_darknet + PaddleOCR
 
 About Darknet https://github.com/AlexeyAB/darknet
 
-About ppocr https://github.com/PaddlePaddle/PaddleOCR
+About PaddleOCR https://github.com/PaddlePaddle/PaddleOCR
 ## Algorithm
 Input Video -> Detect License plate -> Recognize License plate  
 
