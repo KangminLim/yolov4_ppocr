@@ -12,7 +12,7 @@ Input Video -> Detect License plate -> Recognize License plate
 .cfg https://github.com/Dodant/anpr-with-yolo-v4/blob/master/cfg/yolov4-ANPR.cfg
 
 ## Requirements
-yolov4_darknet, ppocr, opencv
+yolov4_darknet, paddleocr, opencv
 
 ## usage(test)
 ```
